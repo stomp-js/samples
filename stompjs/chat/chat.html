@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Chat Application using StompJs</title>
+    <link type="text/css" rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+<div id="wrapper">
+    <div id="menu">
+        <p class="welcome">Welcome, <input title="username" name="username" id="username" type="text" value="Change Me"></p>
+    </div>
+
+    <div id="chatbox"></div>
+
+    <input name="usermsg" type="text" id="usermsg" size="63" title="usermsg"/>
+    <button name="submitmsg" id="submitmsg">Send</button>
+</div>
+<script type="application/javascript" src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@5.0.0/bundles/stomp.umd.min.js"></script>
+<script type="application/javascript">
+    $(function () {
+      const stompConfig = {
+        connectHeaders: {
+          login: "guest",
+          passcode: "guest"
+        },
+        brokerURL: "ws://localhost:15674/ws",
+        debug: function (str) {
+          console.log('STOMP: ' + str);
+        },
+        heartbeatIncoming: 0,
+        heartbeatOutgoing: 0,
+        reconnectDelay: 200
+      };
+
+      const stompClient = new StompJs.Client(stompConfig);
+      
+      stompClient.onConnect = function (frame) {
+        const subscription = stompClient.subscribe('/topic/chat', function (message) {
+          const payload = JSON.parse(message.body);
+
+          const msgDiv = $("<div>").addClass("msgln");
+          msgDiv.html('<span class="user">[' + payload.user + ']: </span><span class="message">' + payload.message + '</span>');
+          $("#chatbox").append(msgDiv);
+        });
+      };
+
+      stompClient.activate();
+
+      $("#submitmsg").click(function () {
+        const message = $("#usermsg").val();
+
+        if (stompClient.connected && message.length > 0) {
+          const body = JSON.stringify({
+            user: $("#username").val(),
+            message: message
+          });
+
+          stompClient.publish({destination: '/topic/chat', body: body});
+        }
+      });
+    })
+</script>
+</body>
+</html>
