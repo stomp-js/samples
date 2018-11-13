@@ -32,6 +32,10 @@ a:hover {
     border: 1px solid #ACD8F0;
 }
 
+#wrapper ul {
+    text-align: left;
+}
+
 #chatbox {
     text-align: left;
     margin: 0 auto;
