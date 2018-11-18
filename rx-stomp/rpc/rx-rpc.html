@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple RPC Application using RxStompRPC and RxJS</title>
+    <link type="text/css" rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+<div id="wrapper">
+    <ul>
+        <li>You will need a STOMP broker running. The defaults will work for fresh RabbitMQ on local machine.</li>
+        <li>Adjust the <a href="https://stomp-js.github.io/api-docs/latest/classes/RxStompConfig.html">configuration</a>
+            as per your STOMP broker.
+        </li>
+        <li>For details on API calls see:
+            <a href="https://stomp-js.github.io/api-docs/latest/classes/RxStompRPC.html">
+                API Reference</a>
+        </li>
+        <li>
+            Clicking on submit will generate two rand integers and send to RPC server endpoint.
+            The server endpoint will wait for a random period (max 1000ms) before responding.
+        </li>
+        <li>
+            Click submit multiple times, you can see the results reaching back in different order than it was submitted.
+        </li>
+        <li>RPC server is implemented in the same page using a different rxStomp connection.</li>
+        <li>
+            See guide at
+            <a href="https://stomp-js.github.io/guide/rx-stomp/ng2-stompjs/2018/10/12/remote-procedure-call.html">
+            https://stomp-js.github.io/guide/rx-stomp/ng2-stompjs/2018/10/12/remote-procedure-call.html</a>
+        </li>
+    </ul>
+
+    <div id="chatbox"></div>
+
+    <button name="submitproblem" id="submitproblem">Submit Problem</button>
+</div>
+
+<!-- It is used for DOM manipulation, not mandatory to use stompjs -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+
+<!-- Include from CDN for better performance, alternatively you can locally copy as well -->
+<script src="https://cdn.jsdelivr.net/npm/rxjs@6.3.3/bundles/rxjs.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@5.0.0/bundles/stomp.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/rx-stomp@0.1.0/bundles/rx-stomp.umd.min.js"></script>
+
+<script type="application/javascript">
+  // Helper function to generate random integers
+  function randomInt(max) {
+    return Math.floor(Math.random() * max);
+  }
+
+  // We will open two separate connections
+  // This block will be used as server - in typical applications the RPC server will be somewhere in back
+  // RPC server may be implemented in any language
+  $(function () {
+    let rxStompRPCServer;
+
+    const stompConfig = {
+      // Typically login, passcode and vhost
+      // Adjust these for your broker
+      connectHeaders: {
+        login: "guest",
+        passcode: "guest"
+      },
+
+      // Broker URL, should start with ws:// or wss:// - adjust for your broker setup
+      brokerURL: "ws://localhost:15674/ws",
+
+      // Keep it off for production, it can be quit verbose
+      // Skip this key to disable
+      // debug: function (str) {
+      //   console.log('RPC Server: ' + str);
+      // },
+
+      // If disconnected, it will retry after 200ms
+      reconnectDelay: 200,
+    };
+
+    // Create an instance. The first RxStomp is the UMD module name and other is the class name
+    rxStompRPCServer = new RxStomp.RxStomp();
+
+    // You can set additional configuration here
+    rxStompRPCServer.configure(stompConfig);
+
+    // Attempt to connect
+    rxStompRPCServer.activate();
+
+    // We will implement an endpoint
+    // This endpoint will wait for random period before responding to simulate real RPC servers
+    rxStompRPCServer.watch('/topic/integer-addition').subscribe(function (request) {
+      console.log("RPC Server: ", request.body);
+      // The response needs to be sent back here, it can safely be inlined
+      const replyTo = request.headers['reply-to'];
+
+      // Same correlation id needs to be sent back as message header, it can safely be inlined
+      const correlationId = request.headers['correlation-id'];
+
+      setTimeout(function () {
+        // Process the request, compute the response
+        const operands = JSON.parse(request.body);
+        const result = {result: Number.parseInt(operands.x) + Number.parseInt(operands.y)};
+        // Completed processing
+
+        // Send the response back to destination `replyTo` with `correlation-id` header
+        rxStompRPCServer.publish({
+          destination: replyTo,
+          body: JSON.stringify(result),
+          headers: {'correlation-id': correlationId}
+        });
+      }, randomInt(10000));
+    });
+
+  });
+
+  // This is the RPC client
+  $(function () {
+    let rxStomp;
+
+    const stompConfig = {
+      // Typically login, passcode and vhost
+      // Adjust these for your broker
+      connectHeaders: {
+        login: "guest",
+        passcode: "guest"
+      },
+
+      // Broker URL, should start with ws:// or wss:// - adjust for your broker setup
+      brokerURL: "ws://localhost:15674/ws",
+
+      // Keep it off for production, it can be quit verbose
+      // Skip this key to disable
+      // debug: function (str) {
+      //   console.log('STOMP: ' + str);
+      // },
+
+      // If disconnected, it will retry after 200ms
+      reconnectDelay: 200,
+    };
+
+    // Create an instance. The first RxStomp is the UMD module name and other is the class name
+    rxStomp = new RxStomp.RxStomp();
+
+    // RPC Client
+    const rxStompRPC = new RxStomp.RxStompRPC(rxStomp);
+
+    // You can set additional configuration here
+    rxStomp.configure(stompConfig);
+
+    // Attempt to connect
+    rxStomp.activate();
+
+    // Set the DOM event handlers must not be inside onConnect - other for each reconnect it will keep getting added
+    $("#submitproblem").click(function () {
+      if (!rxStomp.connected) {
+        alert("Broker disconnected, can't send message.");
+        return;
+      }
+
+      const x = randomInt(200);
+      const y = randomInt(200);
+
+      // Display the problem on screen
+      const msgDiv = displayProblem(x + " + " + y);
+
+      // The RPC call returns an Observable which will trigger only once
+      rxStompRPC.rpc({
+        destination: '/topic/integer-addition',
+        body: JSON.stringify({x: x, y: y})
+      }).subscribe(function (result) {
+        const output = JSON.parse(result.body).result;
+        msgDiv.find('.solution').html(output);
+      });
+    });
+
+    function displayProblem(problem) {
+      const msgDiv = $("<div>").addClass("msgln");
+      msgDiv.html('<span class="problem">[' + problem + ']: </span><span class="solution">waiting...</span>');
+      $("#chatbox").append(msgDiv);
+      return msgDiv;
+    }
+  })
+</script>
+</body>
+</html>

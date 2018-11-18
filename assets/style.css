@@ -59,6 +59,18 @@ a:hover {
     border: 1px solid #ACD8F0;
 }
 
+#chatbox span.problem {
+    font-weight: bold;
+    color: darkslateblue;
+    padding-right: 2pt;
+}
+
+#chatbox span.solution {
+    font-weight: bold;
+    color: darkgreen;
+    padding-right: 2pt;
+}
+
 #submit {
     width: 60px;
 }
