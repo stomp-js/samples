@@ -16,7 +16,7 @@ q.subscribe(block: true) do |delivery_info, metadata, payload|
   response_body = result.to_json
   # Completed processing
 
-  puts metadata[:correlation_id], metadata[:reply_to]
+  puts "RPC Server: Response: #{response_body} for #{payload}"
 
   x = ch.default_exchange
 
