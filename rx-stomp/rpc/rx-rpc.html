@@ -49,6 +49,9 @@
     return Math.floor(Math.random() * max);
   }
 
+  // Destination is RabbitMQ specific, change as per your environment
+  const rpcEndPoint = '/amq/queue/integer-addition';
+
   // This is the RPC client
   $(function () {
     let rxStomp;
@@ -101,7 +104,7 @@
 
       // The RPC call returns an Observable which will trigger only once
       rxStompRPC.rpc({
-        destination: '/topic/integer-addition',
+        destination: rpcEndPoint,
         body: JSON.stringify({x: x, y: y})
       }).subscribe(function (result) {
         const output = JSON.parse(result.body).result;
@@ -113,6 +116,7 @@
       const msgDiv = $("<div>").addClass("msgln");
       msgDiv.html('<span class="problem">[' + problem + ']: </span><span class="solution">waiting...</span>');
       $("#chatbox").append(msgDiv);
+      msgDiv[0].scrollIntoView();
       return msgDiv;
     }
   })

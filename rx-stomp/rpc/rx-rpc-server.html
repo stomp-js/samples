@@ -39,6 +39,9 @@
     return Math.floor(Math.random() * max);
   }
 
+  // Destination is RabbitMQ specific, change as per your environment
+  const rpcEndPoint = '/amq/queue/integer-addition';
+
   // We will open two separate connections
   // This block will be used as server - in typical applications the RPC server will be somewhere in back
   // RPC server may be implemented in any language
@@ -77,7 +80,7 @@
 
     // We will implement an endpoint
     // This endpoint will wait for random period before responding to simulate real RPC servers
-    rxStomp.watch('/topic/integer-addition').subscribe(function (request) {
+    rxStomp.watch(rpcEndPoint).subscribe(function (request) {
       console.log("RPC Server: Request: " + request.body);
       // The response needs to be sent back here, it can safely be inlined
       const replyTo = request.headers['reply-to'];
