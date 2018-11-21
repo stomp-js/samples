@@ -88,6 +88,7 @@
       // Same correlation id needs to be sent back as message header, it can safely be inlined
       const correlationId = request.headers['correlation-id'];
 
+      // simulate a random delay while computing
       setTimeout(function () {
         // Process the request, compute the response
         const operands = JSON.parse(request.body);
