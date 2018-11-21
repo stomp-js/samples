@@ -6,15 +6,15 @@ require 'logger'
 
 require_relative 'rpc-helper'
 
-pool = Thread.pool(3)
+thread_pool = Thread.pool(3)
 
-conn = Bunny.new
-conn.start
+amqp_conn = Bunny.new
+amqp_conn.start
 
-RPCHelper.serve_with_pool(
+RPCHelper.serve(
     end_point: 'integer-addition',
-    conn: conn,
-    pool: pool,
+    amqp_conn: amqp_conn,
+    thread_pool: thread_pool,
     subscribe_opts: {block: true}) do |delivery_info, metadata, payload|
 
   sleep rand(5000) / 1000.0
