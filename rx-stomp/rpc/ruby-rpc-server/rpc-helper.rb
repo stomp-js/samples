@@ -38,18 +38,22 @@ class RPCHelper
       begin
         logger.debug "Received: #{payload}"
 
-        response_body = compute.call(delivery_info, metadata, payload)
-
-        logger.debug "RPC Server: Response: #{response_body} for #{payload}"
-
         # Channel is not guaranteed to be thread safe
         # We must open a new channel when using thread pool
         private_channel = use_thread_pool ? amqp_conn.create_channel : main_channel
         default_exchange = private_channel.default_exchange
 
-        default_exchange.publish response_body,
-                                 routing_key: metadata[:reply_to],
-                                 correlation_id: metadata[:correlation_id]
+        publish_helper = PublishHelper.new(default_exchange,
+                                           logger,
+                                           metadata[:reply_to],
+                                           metadata[:correlation_id])
+
+        response_body = compute.call(delivery_info, metadata,
+                                     payload, publish_helper)
+
+        logger.debug "RPC Server: Response: #{response_body} for #{payload}"
+
+        publish_helper.publish response_body
 
         if manual_ack
           # ack/reject must be called through the channel which received the message
@@ -84,6 +88,22 @@ class RPCHelper
       else
         processor.call(delivery_info, metadata, payload)
       end
+    end
+  end
+
+  class PublishHelper
+    def initialize(exchange, logger, reply_to, correlation_id)
+      @exchange = exchange
+      @reply_to = reply_to
+      @correlation_id = correlation_id
+      @logger = logger
+    end
+
+    def publish(response_body)
+      # @logger.debug response_body
+      @exchange.publish response_body,
+                        routing_key: @reply_to,
+                        correlation_id: @correlation_id
     end
   end
 end
