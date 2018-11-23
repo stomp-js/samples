@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple RPC Application using RxStompRPC and RxJS</title>
+    <link type="text/css" rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+<div id="wrapper">
+    <ul>
+        <li>You will need a STOMP broker running. The defaults will work for fresh RabbitMQ on local machine.</li>
+        <li>Adjust the <a href="https://stomp-js.github.io/api-docs/latest/classes/RxStompConfig.html">configuration</a>
+            as per your STOMP broker.
+        </li>
+        <li>For details on API calls see:
+            <a href="https://stomp-js.github.io/api-docs/latest/classes/RxStompRPC.html">
+                API Reference</a>
+        </li>
+        <li>Start the server by opening <a href="rx-rpc-server.html">RPC Server</a> in another browser tab/window.</li>
+        <li>Alternatively run any of the Ruby servers.</li>
+        <li>
+            Clicking on submit will generate two rand integers and send to RPC server endpoint.
+        </li>
+        <li>
+            Click submit multiple times, you can see the results reaching back in different order than it was submitted.
+        </li>
+        <li>
+            See guide at
+            <a href="https://stomp-js.github.io/guide/rx-stomp/ng2-stompjs/2018/10/12/remote-procedure-call.html">
+            https://stomp-js.github.io/guide/rx-stomp/ng2-stompjs/2018/10/12/remote-procedure-call.html</a>
+        </li>
+    </ul>
+
+    <div id="chatbox"></div>
+
+    <button name="submitproblem" id="submitproblem">Submit Problem</button>
+</div>
+
+<!-- It is used for DOM manipulation, not mandatory to use stompjs -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+
+<!-- Include from CDN for better performance, alternatively you can locally copy as well -->
+<script src="https://cdn.jsdelivr.net/npm/rxjs@6.3.3/bundles/rxjs.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@5.0.0/bundles/stomp.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/rx-stomp@0.1.0/bundles/rx-stomp.umd.min.js"></script>
+
+<script type="application/javascript">
+  // Helper function to generate random integers
+  function randomInt(max) {
+    return Math.floor(Math.random() * max);
+  }
+
+  // Destination is RabbitMQ specific, change as per your environment
+  const rpcEndPoint = '/amq/queue/integer-addition-with-progress';
+
+  // This is the RPC client
+  $(function () {
+    let rxStomp;
+
+    const stompConfig = {
+      // Typically login, passcode and vhost
+      // Adjust these for your broker
+      connectHeaders: {
+        login: "guest",
+        passcode: "guest"
+      },
+
+      // Broker URL, should start with ws:// or wss:// - adjust for your broker setup
+      brokerURL: "ws://localhost:15674/ws",
+
+      // Keep it off for production, it can be quit verbose
+      // Skip this key to disable
+      // debug: function (str) {
+      //   console.log('STOMP: ' + str);
+      // },
+
+      // If disconnected, it will retry after 200ms
+      reconnectDelay: 200,
+    };
+
+    // Create an instance. The first RxStomp is the UMD module name and other is the class name
+    rxStomp = new RxStomp.RxStomp();
+
+    // RPC Client
+    const rxStompRPC = new RxStomp.RxStompRPC(rxStomp);
+
+    // You can set additional configuration here
+    rxStomp.configure(stompConfig);
+
+    // Attempt to connect
+    rxStomp.activate();
+
+    // Set the DOM event handlers must not be inside onConnect - other for each reconnect it will keep getting added
+    $("#submitproblem").click(function () {
+      if (!rxStomp.connected) {
+        alert("Broker disconnected, can't send message.");
+        return;
+      }
+
+      const x = randomInt(200);
+      const y = randomInt(200);
+
+      // Display the problem on screen
+      const msgDiv = displayProblem(x + " + " + y);
+
+      // The RPC call returns an Observable which will trigger only once
+      rxStompRPC.stream({
+        destination: rpcEndPoint,
+        body: JSON.stringify({x: x, y: y})
+      }).pipe(
+        rxjs.operators.map(function (message) {
+          // console.log('Received: ' + message.body);
+
+          // Convert body to JSON
+          return JSON.parse(message.body);
+        }),
+        rxjs.operators.filter(function (json_payload) {
+          if (json_payload.result) {
+            // Got the result, pass it on
+            return true;
+          } else {
+            // Progress messages are handled here, these update the UI
+            let output = Math.floor(json_payload.progress.current / json_payload.progress.max * 100);
+            output += "% complete";
+            msgDiv.find('.solution').html(output);
+            return false;
+          }
+        }),
+        rxjs.operators.take(1) // we expect only one result
+      ).subscribe(function (json_payload) {
+        const output = json_payload.result;
+        msgDiv.find('.solution').html(output);
+      });
+    });
+
+    function displayProblem(problem) {
+      const msgDiv = $("<div>").addClass("msgln");
+      msgDiv.html('<span class="problem">[' + problem + ']: </span><span class="solution">waiting...</span>');
+      $("#chatbox").append(msgDiv);
+      msgDiv[0].scrollIntoView();
+      return msgDiv;
+    }
+  })
+</script>
+</body>
+</html>
