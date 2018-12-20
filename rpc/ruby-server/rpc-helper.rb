@@ -75,7 +75,7 @@ class RPCHelper
             main_channel.reject(delivery_info.delivery_tag, true)
           end
         end
-
+      ensure
         private_channel.close if use_thread_pool && private_channel
       end
     end
