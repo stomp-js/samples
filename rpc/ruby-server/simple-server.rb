@@ -20,6 +20,8 @@ amqp_conn = Bunny.new
 amqp_conn.start
 
 channel = amqp_conn.create_channel
+
+# Notice that RabbitMQ STOMP adaptor maps queue/exchange names
 queue = channel.queue("integer-addition")
 
 queue.subscribe(block: true) do |delivery_info, metadata, payload|
