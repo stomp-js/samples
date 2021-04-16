@@ -14,6 +14,10 @@
             as per your STOMP broker.
         </li>
         <li>
+            This example uses <a href="https://www.rabbitmq.com/stomp.html#d">queue destination of RabbitMQ</a>. The queue must be created before running the sample.
+            The ruby server creates the queue if it is not there.
+        </li>
+        <li>
             The server endpoint will wait for a random period (max 1000ms) before responding.
         </li>
         <li>Request and responses are logged into Console.</li>

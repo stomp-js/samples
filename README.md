@@ -29,6 +29,9 @@ See the client at:
 - [rpc/simple/rx-rpc.html](rpc/simple/rx-rpc.html).
 - Click the button `Submit Problem` many times to see each one getting submitted
   as independent requests.
+- There is an alternate client sample at 
+  [rpc/simple/rx-rpc-explicit-return-dest.html](rpc/simple/rx-rpc-explicit-return-dest.html).
+  This uses custom reply queue. This client is only tested with the simple ruby server.
 
 You will need to run at least one of the following servers:
 

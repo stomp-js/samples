@@ -45,8 +45,8 @@
 
 <!-- Include from CDN for better performance, alternatively you can locally copy as well -->
 <script src="https://cdn.jsdelivr.net/npm/rxjs@6.3.3/bundles/rxjs.umd.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@5.0.0/bundles/stomp.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@stomp/rx-stomp@0.1.0/bundles/rx-stomp.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@6/bundles/stomp.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/rx-stomp@1/bundles/rx-stomp.umd.min.js"></script>
 
 <script type="application/javascript">
   // Helper function to generate random integers
@@ -74,19 +74,39 @@
 
       // Keep it off for production, it can be quit verbose
       // Skip this key to disable
-      // debug: function (str) {
-      //   console.log('STOMP: ' + str);
-      // },
+      debug: function (str) {
+        console.log('STOMP: ' + str);
+      },
 
-      // If disconnected, it will retry after 200ms
-      reconnectDelay: 200,
+        // Log raw data sent/received
+        logRawCommunication: true,
+
+        heartbeatIncoming: 20000,
+        heartbeatOutgoing: 20000,
+
+        // If disconnected, it will retry after 200ms
+      reconnectDelay: 5000,
     };
 
     // Create an instance. The first RxStomp is the UMD module name and other is the class name
     rxStomp = new RxStomp.RxStomp();
 
-    // RPC Client
-    const rxStompRPC = new RxStomp.RxStompRPC(rxStomp);
+    const stompRPCConfig = {
+        // A name unique across all clients
+        replyQueueName: `/queue/replies-${randomInt(1000000000)}`,
+
+        // Simply subscribe, you would need to secure by adding broker specific options
+        setupReplyQueue: (replyQueueName, rxStomp) => {
+            return rxStomp.watch(replyQueueName, {
+                durable: false,
+                'auto-delete': true,
+                'exclusive': true
+            });
+        },
+    };
+
+      // RPC Client
+    const rxStompRPC = new RxStomp.RxStompRPC(rxStomp, stompRPCConfig);
 
     // You can set additional configuration here
     rxStomp.configure(stompConfig);

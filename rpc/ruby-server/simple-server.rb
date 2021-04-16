@@ -15,7 +15,6 @@ require 'json'
 # rpc-server-thread-pool.rb
 ###############################################################################
 
-
 amqp_conn = Bunny.new
 amqp_conn.start
 
@@ -29,7 +28,7 @@ queue.subscribe(block: true) do |delivery_info, metadata, payload|
 
   # Process the request, compute the response
   operands = JSON.parse(payload)
-  result = {result: operands['x'].to_i + operands['y'].to_i}
+  result = { result: operands['x'].to_i + operands['y'].to_i }
   response_body = result.to_json
   # Completed processing
 
@@ -37,5 +36,13 @@ queue.subscribe(block: true) do |delivery_info, metadata, payload|
 
   default_exchange = channel.default_exchange
 
-  default_exchange.publish response_body, routing_key: metadata[:reply_to], correlation_id: metadata[:correlation_id]
+  reply_to = metadata[:reply_to]
+
+  # if the RPC client uses explicit queue name for replies, it needs to be translated from STOMP
+  # semantics to AMQP. In this just removing the prefix /queue/ is sufficient
+  # See https://www.rabbitmq.com/stomp.html#d for details
+  reply_to = reply_to.sub(%r{^/queue/}, '')
+
+  puts "Sent with routing key: #{reply_to}"
+  default_exchange.publish response_body, routing_key: reply_to, correlation_id: metadata[:correlation_id]
 end
