@@ -43,6 +43,9 @@
   $(function () {
     let stompClient;
 
+    let maxConnectionAttempts = 10;
+    let currentTry = 0;
+
     const stompConfig = {
       // Typically, login, passcode and vhost
       // Adjust these for your broker
@@ -65,11 +68,32 @@
 
       // Subscriptions should be done inside onConnect as those need to reinstated when the broker reconnects
       onConnect: function (frame) {
+        // Reset retryCount on successful connection
+        currentTry = 0;
+
         // The return object has a method called `unsubscribe`
         const subscription = stompClient.subscribe('/topic/chat', function (message) {
           const payload = JSON.parse(message.body);
           displayIncomingMessage(payload.user, payload.usrMsg);
         });
+      },
+
+      beforeConnect: function () {
+        currentTry++;
+
+        console.log(`Connection attempt: ${currentTry}`);
+        if (currentTry > maxConnectionAttempts) {
+          console.log(`Exceeds max attempts (${maxConnectionAttempts}), will not try to connect now`);
+
+          // It is valid to call deactivate from beforeConnect
+          stompClient.deactivate();
+        }
+      },
+
+      // Comment out if you do not want exponential back-off
+      onWebSocketClose: function () {
+        stompClient.reconnectDelay = 200 * Math.pow(2, currentTry);
+        console.log(`Exponential back off - next connection attempt in ${stompClient.reconnectDelay}ms`);
       }
     };
 
