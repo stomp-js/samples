@@ -1,56 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Simple Chat Application using RxStomp and RxJS</title>
-    <link type="text/css" rel="stylesheet" href="../../assets/style.css">
+  <meta charset="UTF-8">
+  <title>Simple Chat Application using RxStomp and RxJS</title>
+  <link type="text/css" rel="stylesheet" href="../../assets/style.css">
 </head>
 <body>
 <div id="wrapper">
-    <ul>
-        <li>Open multiple browsers or tabs to chat across those.</li>
-        <li>You will need a STOMP broker running. The defaults will work for fresh RabbitMQ on local machine.</li>
-        <li>Adjust the <a href="https://stomp-js.github.io/api-docs/latest/classes/RxStompConfig.html">configuration</a>
-            as per your STOMP broker.</li>
-        <li>
-            <a href="https://stomp-js.github.io/guide/stompjs/rx-stomp/ng2-stompjs/2018/09/10/using-stomp-with-sockjs.html">
-                Using STOMP with SockJS</a></li>
-        <li>For details on API calls see:
-            <a href="https://stomp-js.github.io/api-docs/latest/classes/RxStomp.html">
-                API Reference</a></li>
-        <li>The html/css is heavily based on
-            <a href="https://code.tutsplus.com/tutorials/how-to-create-a-simple-web-based-chat-application--net-5931">
-                Simple Web-Based Chat Application</a></li>
-        <li>
-            This example does not use rollup, webpack or anything similar. It directly includes all libraries
-            from CDN.
-        </li>
-    </ul>
-    <div id="menu">
-        <p class="welcome">Welcome, <input title="username" name="username" id="username" type="text" value="Change Me">
-        </p>
-    </div>
+  <ul>
+    <li>Open multiple browsers or tabs to chat across those.</li>
+    <li>You will need a STOMP broker running. The defaults will work for fresh RabbitMQ on local machine.</li>
+    <li>Adjust the <a href="https://stomp-js.github.io/api-docs/latest/classes/RxStompConfig.html">configuration</a>
+      as per your STOMP broker.
+    </li>
+    <li>For details on API calls see:
+      <a href="https://stomp-js.github.io/api-docs/latest/classes/RxStomp.html">
+        API Reference</a></li>
+    <li>The html/css is heavily based on
+      <a href="https://code.tutsplus.com/tutorials/how-to-create-a-simple-web-based-chat-application--net-5931">
+        Simple Web-Based Chat Application</a></li>
+    <li>
+      This example does not use rollup, webpack or anything similar. It directly includes all libraries
+      from CDN.
+    </li>
+  </ul>
+  <div id="menu">
+    <p class="welcome">Welcome, <input title="username" name="username" id="username" type="text" value="Change Me">
+    </p>
+  </div>
 
-    <div id="chatbox"></div>
+  <div id="chatbox"></div>
 
-    <input name="usermsg" type="text" id="usermsg" size="63" title="usermsg"/>
-    <button name="submitmsg" id="submitmsg">Send</button>
+  <input name="usermsg" type="text" id="usermsg" size="63" title="usermsg"/>
+  <button name="submitmsg" id="submitmsg">Send</button>
 </div>
 
 <!-- It is used for DOM manipulation, not mandatory to use stompjs -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
 
-<!-- Include from CDN for better performance, alternatively you can locally copy as well -->
-<script src="https://cdn.jsdelivr.net/npm/rxjs@6.3.3/bundles/rxjs.umd.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@5.0.0/bundles/stomp.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@stomp/rx-stomp@0.1.0/bundles/rx-stomp.umd.min.js"></script>
+<!-- Include from CDN for better performance, Alternatively you can locally copy as well -->
+<script src="https://cdn.jsdelivr.net/npm/rxjs@7.8.0/dist/bundles/rxjs.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0-beta5/bundles/stomp.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/rx-stomp@2.0.0-beta2/bundles/rx-stomp.umd.min.js"></script>
 
 <script type="application/javascript">
   $(function () {
     let rxStomp;
 
     const stompConfig = {
-      // Typically login, passcode and vhost
+      // Typically, login, passcode and vhost
       // Adjust these for your broker
       connectHeaders: {
         login: "guest",
@@ -70,51 +68,35 @@
       reconnectDelay: 200,
     };
 
-    // Create an instance. The first RxStomp is the UMD module name and other is the class name
+    // Create an instance. The first RxStomp is the UMD module name and the other is the class name
     rxStomp = new RxStomp.RxStomp();
 
-    // You can set additional configuration here
+    // You can set additional configuration options here
     rxStomp.configure(stompConfig);
 
     // Attempt to connect
     rxStomp.activate();
 
     // Watch will return an RxJS Observable which will yield messages for that end point.
-    // You can call all RxJS operations like map, filter, etc. on this
-    const rxJsSubscription = rxStomp.watch('/topic/chat').pipe(rxjs.operators.map(function (message) {
+    // You can call all RxJS operations like `map`, `filter`, etc. on this
+    const rxJsSubscription = rxStomp.watch('/topic/chat').pipe(rxjs.map(function (message) {
       return JSON.parse(message.body);
-    })).subscribe(function (payload) {
-      displayIncomingMessage(payload.user, payload.message);
+    })).subscribe(({user, usrMsg}) => {
+      displayIncomingMessage(user, usrMsg);
     });
 
     // For the demo, set a random display user name for the chat, just feels nice
     $("#username").val("User " + Math.round(Math.random() * 100));
 
-    // Set the DOM event handlers must not be inside onConnect - other for each reconnect it will keep getting added
     $("#submitmsg").click(function () {
-      if (publishMessage($("#username").val(), $("#usermsg").val())) {
-        clearMessageInput();
-      }
-    });
-
-    function clearMessageInput() {
-      $("#usermsg").val("");
-    }
-
-    function publishMessage(user, message) {
-      // trying to publish a message when the broker is not connected will throw an exception
-      if (!rxStomp.connected) {
-        alert("Broker disconnected, can't send message.");
-        return false;
-      }
-      if (message.length > 0) {
-        const payLoad = { user: user, message: message };
-
+      const user = $("#username").val();
+      const usrMsg = $("#usermsg").val();
+      if (usrMsg.length > 0) {
         // You can additionally pass headers
-        rxStomp.publish({destination: '/topic/chat', body: JSON.stringify(payLoad)});
+        rxStomp.publish({destination: '/topic/chat', body: JSON.stringify({user, usrMsg})});
       }
-      return true;
-    }
+      $("#usermsg").val("");
+    });
 
     function displayIncomingMessage(user, message) {
       const msgDiv = $("<div>").addClass("msgln");
