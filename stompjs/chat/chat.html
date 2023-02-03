@@ -1,52 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Simple Chat Application using StompJs</title>
-    <link type="text/css" rel="stylesheet" href="../../assets/style.css">
+  <meta charset="UTF-8">
+  <title>Simple Chat Application using StompJs</title>
+  <link type="text/css" rel="stylesheet" href="../../assets/style.css">
 </head>
 <body>
 <div id="wrapper">
-    <ul>
-        <li>Open multiple browsers or tabs to chat across those.</li>
-        <li>You will need a STOMP broker running. The defaults will work for fresh RabbitMQ on local machine.</li>
-        <li>Adjust the <a href="https://stomp-js.github.io/api-docs/latest/classes/StompConfig.html">configuration</a>
-            as per your STOMP broker.</li>
-        <li>A guide at <a href="https://stomp-js.github.io/guide/stompjs/2018/06/28/using-stompjs-v5.html">
-            Using StompJs v5</a></li>
-        <li>
-            <a href="https://stomp-js.github.io/guide/stompjs/rx-stomp/ng2-stompjs/2018/09/10/using-stomp-with-sockjs.html">
-                Using STOMP with SockJS</a></li>
-        <li>For details on API calls see:
-            <a href="https://stomp-js.github.io/api-docs/latest/classes/Client.html">
-                API Reference</a></li>
-        <li>The html/css is heavily based on
-            <a href="https://code.tutsplus.com/tutorials/how-to-create-a-simple-web-based-chat-application--net-5931">
-                Simple Web-Based Chat Application</a></li>
-    </ul>
-    <div id="menu">
-        <p class="welcome">Welcome, <input title="username" name="username" id="username" type="text" value="Change Me">
-        </p>
-    </div>
+  <ul>
+    <li>Open multiple browsers or tabs to chat across those.</li>
+    <li>You will need a STOMP broker running. The defaults will work for fresh RabbitMQ on local machine.</li>
+    <li>Adjust the <a href="https://stomp-js.github.io/api-docs/latest/classes/StompConfig.html">configuration</a>
+      as per your STOMP broker.
+    </li>
+    <li>A guide at <a href="https://stomp-js.github.io/guide/stompjs/2018/06/28/using-stompjs-v5.html">
+      Using StompJs v5</a></li>
+    <li>For details on API calls see:
+      <a href="https://stomp-js.github.io/api-docs/latest/classes/Client.html">
+        API Reference</a></li>
+    <li>The html/css is heavily based on
+      <a href="https://code.tutsplus.com/tutorials/how-to-create-a-simple-web-based-chat-application--net-5931">
+        Simple Web-Based Chat Application</a></li>
+  </ul>
+  <div id="menu">
+    <p class="welcome">Welcome, <input title="username" name="username" id="username" type="text" value="Change Me">
+    </p>
+  </div>
 
-    <div id="chatbox"></div>
+  <div id="chatbox"></div>
 
-    <input name="usermsg" type="text" id="usermsg" size="63" title="usermsg"/>
-    <button name="submitmsg" id="submitmsg">Send</button>
+  <input name="usermsg" type="text" id="usermsg" size="63" title="usermsg"/>
+  <button name="submitmsg" id="submitmsg">Send</button>
 </div>
 
 <!-- It is used for DOM manipulation, not mandatory to use stompjs -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
 
 <!-- Include from CDN for better performance, alternatively you can locally copy as well -->
-<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@5.0.0/bundles/stomp.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0-beta2/bundles/stomp.umd.min.js"></script>
 
 <script type="application/javascript">
   $(function () {
     let stompClient;
 
     const stompConfig = {
-      // Typically login, passcode and vhost
+      // Typically, login, passcode and vhost
       // Adjust these for your broker
       connectHeaders: {
         login: "guest",
@@ -70,7 +68,7 @@
         // The return object has a method called `unsubscribe`
         const subscription = stompClient.subscribe('/topic/chat', function (message) {
           const payload = JSON.parse(message.body);
-          displayIncomingMessage(payload.user, payload.message);
+          displayIncomingMessage(payload.user, payload.usrMsg);
         });
       }
     };
@@ -78,7 +76,7 @@
     // Create an instance
     stompClient = new StompJs.Client(stompConfig);
 
-    // You can set additional configuration here
+    // You can set additional configuration options here
 
     // Attempt to connect
     stompClient.activate();
@@ -104,7 +102,7 @@
         return false;
       }
       if (message.length > 0) {
-        const payLoad = { user: user, message: message };
+        const payLoad = {user: user, usrMsg: message};
 
         // You can additionally pass headers
         stompClient.publish({destination: '/topic/chat', body: JSON.stringify(payLoad)});
